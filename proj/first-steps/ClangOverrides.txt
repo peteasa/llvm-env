@@ -1,0 +1,26 @@
+
+SET (LLVM_HOME "/home/pas/Projects/llvm-env/local")
+
+SET (CMAKE_C_COMPILER             "${LLVM_HOME}/bin/clang")
+SET (CMAKE_C_FLAGS_INIT                "-Wall -Wextra -std=c11")
+SET (CMAKE_C_FLAGS_DEBUG_INIT          "-g")
+SET (CMAKE_C_FLAGS_MINSIZEREL_INIT     "-Os -DNDEBUG")
+SET (CMAKE_C_FLAGS_RELEASE_INIT        "-O4 -DNDEBUG")
+SET (CMAKE_C_FLAGS_RELWITHDEBINFO_INIT "-O2 -g")
+
+SET (CMAKE_CXX_COMPILER             "${LLVM_HOME}/bin/clang++")
+SET (CMAKE_CXX_FLAGS_INIT                "-fno-rtti -Wall -Wextra -std=c++11")
+SET (CMAKE_CXX_FLAGS_DEBUG_INIT          "-g")
+SET (CMAKE_CXX_FLAGS_MINSIZEREL_INIT     "-Os -DNDEBUG")
+SET (CMAKE_CXX_FLAGS_RELEASE_INIT        "-O4 -DNDEBUG")
+SET (CMAKE_CXX_FLAGS_RELWITHDEBINFO_INIT "-O2 -g")
+
+# Alternative to the following is cmake -D_CMAKE_TOOLCHAIN_PREFIX=llvm-
+SET (CMAKE_AR      "${LLVM_HOME}/bin/llvm-ar")
+SET (CMAKE_LINKER  "${LLVM_HOME}/bin/llvm-ld")
+SET (CMAKE_NM      "${LLVM_HOME}/bin/llvm-nm")
+SET (CMAKE_OBJDUMP "${LLVM_HOME}/bin/llvm-objdump")
+SET (CMAKE_RANLIB  "${LLVM_HOME}/bin/llvm-ranlib")
+
+set(LLVM_ENABLE_EH OFF)
+set(LLVM_ENABLE_RTTI OFF)

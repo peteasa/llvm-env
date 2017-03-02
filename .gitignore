@@ -1,0 +1,5 @@
+build/
+local/
+proj/first-stepsE
+tools-src/llvm
+.metadata/
