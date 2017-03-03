@@ -58,17 +58,19 @@ endif( ZLIB_FOUND )
 find_package (Threads)
 
 message(STATUS "LLVM_DIR ${LLVM_DIR}")
-find_package ( LLVM REQUIRED CONFIG NO_CMAKE_BUILDS_PATH )
+find_package ( LLVM REQUIRED CONFIG )
 list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+
+# For out of source tree LLVM pass development use
+# add_llvm_loadable_module from AddLLVM
+include(AddLLVM)
 
 message(STATUS "Clang_DIR ${Clang_DIR}")
 find_package ( Clang REQUIRED clangTooling libClang)
 list(APPEND CMAKE_MODULE_PATH "${CLANG_CMAKE_DIR}")
 message(STATUS "Using ClangConfig.cmake in: ${CLANG_CMAKE_DIR}")
-
-include(AddLLVM)
 
 # Get LLVM libraries for linking
 llvm_map_components_to_libnames(LLVM_LIBS
