@@ -39,122 +39,101 @@ if (CMAKE_COMPILER_IS_GNUCC)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -std=c++11")
 endif()
 
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -std=c11")
+   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti -Wall -Wextra -std=c++11")
+endif()
+
+# Suppress warnings from clang API headers
+message(STATUS "CMAKE_CXX_COMPILER_ID : ${CMAKE_CXX_COMPILER_ID}")
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-parameter")
+endif()
+
 find_package( ZLIB REQUIRED )
 if ( ZLIB_FOUND )
     include_directories( ${ZLIB_INCLUDE_DIRS} )
 endif( ZLIB_FOUND )
 
-set (LLVM_DIR
-  "${LLVM_HOME}/lib/cmake/llvm")
-set (Clang_DIR
-  "${LLVM_HOME}/lib/cmake/clang")
-find_package ( LLVM REQUIRED )
-find_package ( Clang REQUIRED clangTooling libClang)
+find_package (Threads)
+
+message(STATUS "LLVM_DIR ${LLVM_DIR}")
+find_package ( LLVM REQUIRED CONFIG NO_CMAKE_BUILDS_PATH )
 list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
+message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+
+message(STATUS "Clang_DIR ${Clang_DIR}")
+find_package ( Clang REQUIRED clangTooling libClang)
+list(APPEND CMAKE_MODULE_PATH "${CLANG_CMAKE_DIR}")
+message(STATUS "Using ClangConfig.cmake in: ${CLANG_CMAKE_DIR}")
+
 include(AddLLVM)
 
+# Get LLVM libraries for linking
+llvm_map_components_to_libnames(LLVM_LIBS
+  bitreader bitwriter core instrumentation ipo irreader
+  linker lto mcparser objcarcopts option target)
+
+if (NOT (${LLVM_PACKAGE_VERSION} VERSION_LESS "3.9"))
+  llvm_map_components_to_libnames(LLVM_COVERAGE coverage)
+  list(APPEND LLVM_LIBS ${LLVM_COVERAGE})
+endif()
+
+if (NOT (${LLVM_PACKAGE_VERSION} VERSION_LESS "4.0"))
+  llvm_map_components_to_libnames(LLVM_COROUTINES coroutines)
+  list(APPEND LLVM_LIBS ${LLVM_COROUTINES})
+endif()
+
+set(CMAKE_REQUIRED_INCLUDES
+    "${CMAKE_REQUIRED_INCLUDES};${LLVM_INCLUDE_DIRS}")
+set(CMAKE_REQUIRED_DEFINITIONS
+    "${CMAKE_REQUIRED_DEFINITIONS};${LLVM_DEFINITIONS}")
+
+  # Check for Clang headers
+unset(CLANG_HEADER CACHE)
+find_path(CLANG_HEADER "clang/CodeGen/CodeGenAction.h"
+          PATHS "${CLANG_ROOT}/include" "${LLVM_INCLUDE_DIRS}"
+          NO_DEFAULT_PATH)
+find_path(CLANG_HEADER "clang/CodeGen/CodeGenAction.h")
+if ("${CLANG_HEADER}" STREQUAL "CLANG_HEADER-NOTFOUND")
+  message(FATAL_ERROR "Clang headers not found (set CLANG_ROOT)")
+endif()
+
+# Check for Clang libraries
+unset(CLANG_LIB CACHE)
+find_library(CLANG_LIB "clangFrontend"
+             PATHS "${CLANG_ROOT}/lib" "${LLVM_LIBRARY_DIRS}"
+             NO_DEFAULT_PATH)
+find_library(CLANG_LIB "clangFrontend")
+if ("${CLANG_LIB}" STREQUAL "CLANG_LIB-NOTFOUND")
+  message(FATAL_ERROR "Clang libraries not found (set CLANG_ROOT)")
+endif()
+
+# Check for clang
+find_program(CLANG clang
+             PATHS "${CLANG_ROOT}/bin" "${LLVM_TOOLS_BINARY_DIR}"
+             NO_DEFAULT_PATH)
+find_program(CLANG clang)
+if ("${CLANG}" STREQUAL "CLANG-NOTFOUND")
+  message(FATAL_ERROR "Could not find clang binary")
+endif()
+
 add_definitions(${LLVM_DEFINITIONS})
-include_directories(${LLVM_INCLUDE_DIRS})
-set (CLANG_AVAILABLE_LIBS
-  # Readers despair; the order of these files -matter-
-  ${LLVM_HOME}/lib/libclangFrontendTool.a
-  ${LLVM_HOME}/lib/libclangFrontend.a
-  ${LLVM_HOME}/lib/libclangIndex.a
-  ${LLVM_HOME}/lib/libclangRewriteFrontend.a
-  ${LLVM_HOME}/lib/libclangRewrite.a
-  ${LLVM_HOME}/lib/libclangCodeGen.a
-  ${LLVM_HOME}/lib/libclangParse.a
-  ${LLVM_HOME}/lib/libclangSema.a
-  ${LLVM_HOME}/lib/libclangAST.a
-  ${LLVM_HOME}/lib/libclangASTMatchers.a
-  ${LLVM_HOME}/lib/libclangDynamicASTMatchers.a
-  ${LLVM_HOME}/lib/libclangBasic.a
-  ${LLVM_HOME}/lib/libclangSerialization.a
-  ${LLVM_HOME}/lib/libclangDriver.a
-  ${LLVM_HOME}/lib/libclangEdit.a
-  ${LLVM_HOME}/lib/libclangFormat.a
-  ${LLVM_HOME}/lib/libclangLex.a
-  ${LLVM_HOME}/lib/libclangTooling.a
-  ${LLVM_HOME}/lib/libclangToolingCore.a
-  ${LLVM_HOME}/lib/libclangAnalysis.a
-  )
 
-#llvm_map_components_to_libnames(LLVM_LIBS
-#  bitreader bitwriter core instrumentation ipo irreader
-#  linker lto mcparser objcarcopts option target)
-set (LLVM_ALIBS
-  ${LLVM_HOME}/lib/libLLVMX86AsmParser.a
-  ${LLVM_HOME}/lib/libLLVMX86Desc.a
-  ${LLVM_HOME}/lib/libLLVMX86AsmPrinter.a
-  ${LLVM_HOME}/lib/libLLVMX86Info.a
-  ${LLVM_HOME}/lib/libLLVMX86Utils.a
-  ${LLVM_HOME}/lib/libLLVMMIRParser.a
-  ${LLVM_HOME}/lib/libLLVMipo.a
-  ${LLVM_HOME}/lib/libLLVMScalarOpts.a
-  ${LLVM_HOME}/lib/libLLVMInstCombine.a
-  ${LLVM_HOME}/lib/libLLVMInstrumentation.a
-  ${LLVM_HOME}/lib/libLLVMCoroutines.a
-  ${LLVM_HOME}/lib/libLLVMTransformUtils.a
-  ${LLVM_HOME}/lib/libLLVMVectorize.a
-  ${LLVM_HOME}/lib/libLLVMProfileData.a
-  ${LLVM_HOME}/lib/libLLVMAnalysis.a
-  ${LLVM_HOME}/lib/libLLVMOption.a
-  ${LLVM_HOME}/lib/libLLVMMIRParser.a
-  ${LLVM_HOME}/lib/libLLVMIRReader.a
-  ${LLVM_HOME}/lib/libLLVMMCParser.a
-  ${LLVM_HOME}/lib/libLLVMAsmParser.a
-  ${LLVM_HOME}/lib/libLLVMObject.a
-  ${LLVM_HOME}/lib/libLLVMMC.a
-  ${LLVM_HOME}/lib/libLLVMBitReader.a
-  ${LLVM_HOME}/lib/libLLVMBitWriter.a
-  ${LLVM_HOME}/lib/libLLVMPasses.a
-  ${LLVM_HOME}/lib/libLLVMDemangle.a
-  ${LLVM_HOME}/lib/libLLVMLinker.a
-  ${LLVM_HOME}/lib/libLLVMObjCARCOpts.a
-  ${LLVM_HOME}/lib/libLLVMCodeGen.a
-  ${LLVM_HOME}/lib/libLLVMTarget.a
-  ${LLVM_HOME}/lib/libLLVMCoverage.a
-  ${LLVM_HOME}/lib/libLLVMLTO.a
-  ${LLVM_HOME}/lib/libLLVMCore.a
-  ${LLVM_HOME}/lib/libLLVMSupport.a
-  )
-#  ${LLVM_HOME}/lib/libLLVMTableGen.a
-#
-#  ${LLVM_HOME}/lib/libLLVMSelectionDAG.a
-#  ${LLVM_HOME}/lib/libLLVMAsmPrinter.a
-#  ${LLVM_HOME}/lib/libLLVMGlobalISel.a
-#  ${LLVM_HOME}/lib/libLLVMMCDisassembler.a
-#  ${LLVM_HOME}/lib/libLLVMObjectYAML.a
-#  ${LLVM_HOME}/lib/libLLVMDebugInfoDWARF.a
-#  ${LLVM_HOME}/lib/libLLVMDebugInfoMSF.a
-#  ${LLVM_HOME}/lib/libLLVMDebugInfoCodeView.a
-#  ${LLVM_HOME}/lib/libLLVMDebugInfoPDB.a
-#  ${LLVM_HOME}/lib/libLLVMSymbolize.a
-#  ${LLVM_HOME}/lib/libLLVMExecutionEngine.a
-#  ${LLVM_HOME}/lib/libLLVMInterpreter.a
-#  ${LLVM_HOME}/lib/libLLVMMCJIT.a
-#  ${LLVM_HOME}/lib/libLLVMOrcJIT.a
-#  ${LLVM_HOME}/lib/libLLVMRuntimeDyld.a
-#  ${LLVM_HOME}/lib/libLLVMX86CodeGen.a
-#  ${LLVM_HOME}/lib/libLLVMX86Disassembler.a
-#  ${LLVM_HOME}/lib/libLLVMXCoreCodeGen.a
-#  ${LLVM_HOME}/lib/libLLVMXCoreDisassembler.a
-#  ${LLVM_HOME}/lib/libLLVMXCoreAsmPrinter.a
-#  ${LLVM_HOME}/lib/libLLVMXCoreInfo.a
-#  ${LLVM_HOME}/lib/libLLVMXCoreDesc.a
-#  ${LLVM_HOME}/lib/libLLVMLineEditor.a
-#  ${LLVM_HOME}/lib/libLLVMLibDriver.a
-#  ${LLVM_HOME}/lib/libLLVMXRay.a
-#
-#  )
+include_directories(${LLVM_INCLUDE_DIRS} ${CLANG_INCLUDE_DIRS})
+link_directories(${LLVM_LIBRARY_DIRS})
 
-find_package (Threads)
 set (EXTRA_LIBS ${EXTRA_LIBS}
   ${CMAKE_THREAD_LIBS_INIT}
   ${ZLIB_LIBRARIES}
   ${CMAKE_DL_LIBS}
   ncurses
-  ${CLANG_AVAILABLE_LIBS}
-  ${LLVM_ALIBS})
+  ${LLVM_LIBS}
+  clangFrontend
+  clangCodeGen
+  clangBasic
+  )
+
 add_subdirectory ("${PROJECT_SOURCE_DIR}/src/main")
 
