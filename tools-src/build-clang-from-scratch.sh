@@ -13,6 +13,6 @@ cd $TOPDIR
 mkdir build
 cd build/
 cmake -G "Unix Makefiles" ../tools-src/llvm -DCMAKE_INSTALL_PREFIX=$TOPDIR/local > cmake.log 2>&1
-make -j 2 > make.log 2>&1
+make -j 2 install > make.log 2>&1
 
 cd $STARTDIR
